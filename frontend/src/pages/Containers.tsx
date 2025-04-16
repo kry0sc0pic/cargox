@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchContainers, exportArrangement } from '../api';
-import { Loader, Box, Layers, AlertTriangle, Info, Download } from 'lucide-react';
+import { Loader, Box, Layers, AlertTriangle, Info, Download, View } from 'lucide-react';
+import Container3DView from '../components/Container3DView';
 
 interface ContainerItem {
   id: string;
@@ -45,6 +46,7 @@ const ContainersPage = () => {
   const [downloading, setDownloading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const containersPerPage = 5;
+  const [show3DView, setShow3DView] = useState(false);
 
   useEffect(() => {
     const getContainersData = async () => {
@@ -251,11 +253,21 @@ const ContainersPage = () => {
           </div>
 
           <div className="md:col-span-2">
-            {selectedContainer && (
+            {selectedContainer && getSelectedContainer() && (
               <div className="bg-gray-950 border border-green-800/30 rounded-md p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-green-400 text-sm font-bold">
-                    {'// POD_'}{getSelectedContainer()?.id} SPECIFICATIONS
+                  <div className="flex items-center gap-4">
+                    <div className="text-green-400 text-sm font-bold">
+                      {'// POD_'}{getSelectedContainer()?.id} SPECIFICATIONS
+                    </div>
+                    <button 
+                      onClick={() => setShow3DView(true)}
+                      className="flex items-center px-2 py-1 rounded text-xs bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 border border-blue-500/30"
+                      title="View 3D Model"
+                    >
+                      <View className="h-3 w-3 mr-1" />
+                      View 3D
+                    </button>
                   </div>
                   <div className="px-2 py-1 bg-green-900/20 text-green-500 text-xs rounded border border-green-500/20">
                     ACTIVE
@@ -338,6 +350,17 @@ const ContainersPage = () => {
           <div>SYSTEM: CARGO-CONTAINER-MONITOR-v1.2</div>
         </div>
       </div>
+
+      {show3DView && getSelectedContainer() && (
+        <Container3DView 
+          containerId={getSelectedContainer()!.id}
+          containerWidth={getSelectedContainer()!.width}
+          containerHeight={getSelectedContainer()!.height}
+          containerDepth={getSelectedContainer()!.depth}
+          items={getSelectedContainer()!.items}
+          onClose={() => setShow3DView(false)}
+        />
+      )}
     </div>
   );
 };
