@@ -267,16 +267,20 @@ export async function identifyWaste() {
 /**
  * Generate a plan for returning waste items
  * @param {string} targetZone - Zone where waste should be moved to
+ * @param {boolean} includeAllWaste - Include waste items that are already placed in containers
  * @returns {Promise<Object>} - Waste return plan
  */
-export async function generateWasteReturnPlan(zoneId = "W") {
+export async function generateWasteReturnPlan(zoneId = "W", includeAllWaste = true) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/waste/return-plan`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ zoneId })
+      body: JSON.stringify({ 
+        zoneId,
+        includeAllWaste: includeAllWaste // Add parameter to include all waste items
+      })
     });
     return await response.json();
   } catch (error) {

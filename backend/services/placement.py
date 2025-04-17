@@ -1074,31 +1074,54 @@ class PlacementService:
             "new_waste_items": new_waste_items
         }
 
-    def generate_waste_placement_plan(self, target_zone: str = "W") -> Dict[str, Any]:
+    def generate_waste_placement_plan(self, target_zone: str = "W", include_all_waste: bool = True) -> Dict[str, Any]:
         """
         Generate a plan for placing waste items in waste containers.
         
         Args:
             target_zone: The zone where waste containers are located
+            include_all_waste: If True, include waste items already placed in other containers
             
         Returns:
             Dictionary with placement plan details
         """
-        # Get all waste items that are not yet placed
-        waste_items = self.db.query(Item).filter(
-            Item.is_waste == True,
-            Item.is_placed == False
-        ).all()
+        # Get all waste items based on the flag
+        if include_all_waste:
+            # Get ALL waste items, including those already placed
+            waste_items_unplaced = self.db.query(Item).filter(
+                Item.is_waste == True,
+                Item.is_placed == False
+            ).all()
+            
+            # Get placed waste items that are not in waste containers
+            waste_items_misplaced = self.db.query(Item).filter(
+                Item.is_waste == True,
+                Item.is_placed == True,
+                ~Item.container_id.like("WST%")  # Not in waste containers 
+            ).all()
+            
+            waste_items = waste_items_unplaced + waste_items_misplaced
+            
+            logger.info(f"Including ALL waste items: {len(waste_items_unplaced)} unplaced, {len(waste_items_misplaced)} misplaced")
+        else:
+            # Just get unplaced waste items (original behavior)
+            waste_items = self.db.query(Item).filter(
+                Item.is_waste == True,
+                Item.is_placed == False
+            ).all()
         
         if not waste_items:
             return {
                 "success": True,
-                "message": "No unplaced waste items found",
+                "message": "No waste items found that need placement",
                 "placed_count": 0,
                 "unplaced_count": 0,
                 "waste_containers": [],
                 "placement_plan": []
             }
+        
+        # Log found waste items
+        logger.info(f"Found {len(waste_items)} waste items to place in target zone {target_zone}")
         
         # Get waste containers using multiple methods to ensure compatibility
         waste_containers_from_type = self.db.query(Container).filter(

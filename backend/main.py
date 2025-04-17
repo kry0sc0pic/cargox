@@ -2008,16 +2008,17 @@ async def api_waste_return_plan(
 ):
     try:
         target_zone = body.get("zoneId", "W")
+        include_all_waste = body.get("includeAllWaste", True)  # Get the includeAllWaste parameter, default to True
         
         # Initialize the placement service
         placement_service = PlacementService(db)
         
         # Generate waste placement plan
-        result = placement_service.generate_waste_placement_plan(target_zone)
+        result = placement_service.generate_waste_placement_plan(target_zone, include_all_waste)
         
         # Log the action
         log_action(db, "waste_placement", None, None, "system", 
-                  f"Generated waste placement plan for {result.get('placed_count', 0)} items")
+                  f"Generated waste placement plan for {result.get('placed_count', 0)} items with includeAllWaste={include_all_waste}")
         
         return result
     
