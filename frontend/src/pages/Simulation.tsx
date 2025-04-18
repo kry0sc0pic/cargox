@@ -28,11 +28,9 @@ const Simulation = () => {
   const [usagePlan, setUsagePlan] = useState<Record<string, number>>({});
   const [itemId, setItemId] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(1);
-  const [daysToSimulate, setDaysToSimulate] = useState<number>(1);
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentDay, setCurrentDay] = useState<number>(0);
   const [showCountdown, setShowCountdown] = useState<boolean>(false);
 
   const addToUsagePlan = () => {
@@ -67,56 +65,33 @@ const Simulation = () => {
     setIsLoading(true);
     setError(null);
     setShowCountdown(true);
-    setCurrentDay(0);
     
     try {
-      // Set animation duration to exactly 3 seconds
+      // Set animation duration to exactly 3 seconds for a single day simulation
       const animationDuration = 3000; // 3 seconds in milliseconds
-      const dayUpdateInterval = animationDuration / daysToSimulate;
       
-      // Start the countdown animation
+      // Show countdown animation (optional, could just show a spinner)
       const startTime = Date.now();
+      // Wait for the animation duration
+      await new Promise(resolve => setTimeout(resolve, animationDuration));
       
-      // For each day, update the UI
-      for (let i = 0; i < daysToSimulate; i++) {
-        // Calculate the elapsed time
-        const elapsed = Date.now() - startTime;
-        // Calculate how long to wait for next update
-        const targetTime = (i + 1) * dayUpdateInterval;
-        // Wait for the appropriate time if needed
-        if (elapsed < targetTime) {
-          await new Promise(resolve => setTimeout(resolve, targetTime - elapsed));
-        }
-        
-        setCurrentDay(i + 1);
+      // Now run the actual simulation for 1 day
+      const response = await simulateDay(usagePlan);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to simulate day');
       }
       
-      // Wait for animation to complete if needed
-      const totalElapsed = Date.now() - startTime;
-      if (totalElapsed < animationDuration) {
-        await new Promise(resolve => setTimeout(resolve, animationDuration - totalElapsed));
-      }
+      // Update the result
+      setSimulationResult({
+        success: response.success,
+        message: response.message,
+        simulated_date: response.simulated_date,
+        used_items: response.used_items || [],
+        expired_items: response.expired_items || []
+      });
       
-      // Now run the actual simulation without delays
-      let currentResult: SimulationResult | null = null;
-      for (let i = 0; i < daysToSimulate; i++) {
-        const response = await simulateDay(usagePlan);
-        if (!response.success) {
-          throw new Error(response.message || 'Failed to simulate day');
-        }
-        
-        // Update the current result with the latest simulation data
-        currentResult = {
-          success: response.success,
-          message: response.message,
-          simulated_date: response.simulated_date,
-          used_items: response.used_items || [],
-          expired_items: response.expired_items || []
-        };
-      }
-      setSimulationResult(currentResult);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to simulate days');
+      setError(err instanceof Error ? err.message : 'Failed to simulate day');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -134,19 +109,14 @@ const Simulation = () => {
       {showCountdown && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-gray-900/90 border border-green-500/30 p-8 rounded-lg shadow-xl text-center">
-            <div className="text-6xl font-mono text-green-500 mb-4 animate-pulse" style={{ animationDuration: '1s' }}>
-              DAY {currentDay} / {daysToSimulate}
+            <div className="text-4xl font-mono text-green-500 mb-4 animate-pulse" style={{ animationDuration: '1s' }}>
+              SIMULATING 1 DAY...
             </div>
             <div className="text-gray-400 text-sm font-mono animate-pulse" style={{ animationDuration: '1s' }}>
-              SIMULATING TIME PROGRESSION...
+              PROCESSING EVENTS...
             </div>
             <div className="mt-4">
-              <div className="w-64 h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-green-500 transition-all duration-300"
-                  style={{ width: `${(currentDay / daysToSimulate) * 100}%` }}
-                ></div>
-              </div>
+              <Loader className="h-8 w-8 animate-spin text-green-500 mx-auto" />
             </div>
           </div>
         </div>
@@ -158,27 +128,7 @@ const Simulation = () => {
           <h2 className="text-lg font-mono font-semibold text-green-400">SIMULATION_SETTINGS</h2>
         </div>
 
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-green-400 font-mono text-xs">DAYS_TO_SIMULATE:</label>
-            <span className="text-gray-400 font-mono text-xs">{daysToSimulate} DAYS</span>
-          </div>
-          <input
-            type="range"
-            value={daysToSimulate}
-            onChange={(e) => setDaysToSimulate(parseInt(e.target.value))}
-            min="1"
-            max="30"
-            step="1"
-            className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-green-500"
-          />
-          <div className="flex justify-between mt-1">
-            <span className="text-gray-500 text-xs">1</span>
-            <span className="text-gray-500 text-xs">30</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center mb-4">
+        <div className="flex items-center mb-4 mt-6">
           <div className="w-2 h-2 bg-green-500 mr-2"></div>
           <h2 className="text-lg font-mono font-semibold text-green-400">USAGE_PLAN</h2>
         </div>
@@ -260,7 +210,7 @@ const Simulation = () => {
                 className="bg-black/40 hover:bg-black/60 border border-green-500/30 text-green-400 px-4 py-2 rounded-md transition duration-200 ease-in-out transform hover:scale-105 font-mono text-sm"
                 disabled={isLoading}
               >
-                {isLoading ? 'SIMULATING...' : `SIMULATE_${daysToSimulate}_DAYS`}
+                {isLoading ? 'SIMULATING...' : 'SIMULATE_1_DAY'}
               </button>
             </div>
           </div>
@@ -273,7 +223,7 @@ const Simulation = () => {
               className="bg-black/40 hover:bg-black/60 border border-green-500/30 text-green-400 px-4 py-2 rounded-md transition duration-200 ease-in-out transform hover:scale-105 font-mono text-sm"
               disabled={isLoading}
             >
-              {isLoading ? 'SIMULATING...' : `SIMULATE_${daysToSimulate}_DAYS`}
+              {isLoading ? 'SIMULATING...' : 'SIMULATE_1_DAY'}
             </button>
           </div>
         )}
