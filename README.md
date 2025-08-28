@@ -2,6 +2,8 @@
 
 A comprehensive implementation of the Space Station Cargo Management System API built with FastAPI and Python. This system provides a robust solution for managing cargo placement, retrieval, waste management, and time simulation in a space station environment.
 
+**Demo Video**: [https://youtu.be/4F44rka61LE](https://youtu.be/4F44rka61LE)
+
 ## Features
 
 1. ✅ Placement API - Intelligent cargo placement optimization
